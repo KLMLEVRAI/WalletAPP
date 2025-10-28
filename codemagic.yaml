@@ -1,38 +1,37 @@
 workflows:
   ios_build:
-    name: iOS Build
+    name: Build iOS IPA from Swift code
     environment:
       xcode: 16.4
       vars:
-        XCODE_WORKSPACE: "WalletApp.xcodeproj"
-        XCODE_SCHEME: "WalletApp"
+        APP_NAME: WalletApp
     scripts:
-      - name: Clean and prepare project
+      - name: Check Swift version
+        script: swift --version
+
+      - name: Create Xcode project if missing
         script: |
-          echo "Cleaning build folders..."
-          rm -rf ~/Library/Developer/Xcode/DerivedData
-          echo "Removing Package.swift to prevent SwiftPM compile error"
-          find . -name "Package.swift" -delete
-      - name: Build for iOS
+          if [ ! -d "${APP_NAME}.xcodeproj" ]; then
+            echo "No .xcodeproj found — creating one..."
+            swift package init --type executable
+            swift package generate-xcodeproj
+          fi
+
+      - name: Build iOS archive
         script: |
-          xcodebuild -scheme WalletApp \
-            -sdk iphoneos \
+          xcodebuild -project ${APP_NAME}.xcodeproj \
+            -scheme ${APP_NAME} \
             -destination 'generic/platform=iOS' \
             -configuration Release \
-            -archivePath build/WalletApp.xcarchive archive
+            -archivePath build/${APP_NAME}.xcarchive \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+
       - name: Export IPA
         script: |
-          mkdir -p export
+          mkdir -p build/ipa
           xcodebuild -exportArchive \
-            -archivePath build/WalletApp.xcarchive \
-            -exportPath export \
-            -exportOptionsPlist <(cat <<-EOF
-            {
-              "method": "development",
-              "signingStyle": "automatic",
-              "teamID": "YOUR_TEAM_ID_HERE"
-            }
-          EOF
-          )
+            -archivePath build/${APP_NAME}.xcarchive \
+            -exportPath build/ipa \
+            -exportOptionsPlist <(echo '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>method</key><string>ad-hoc</string></dict></plist>')
     artifacts:
-      - export/*.ipa
+      - build/ipa/*.ipa
