@@ -1,18 +1,16 @@
 workflows:
   ios_build:
-    name: Build iOS Swift App
+    name: Build iOS Swift App (No Mac Needed)
     environment:
       xcode: latest
       vars:
         APP_NAME: "WalletApp"
     scripts:
-      - name: Create Xcode project
+      - name: Create Swift project
         script: |
           mkdir -p $APP_NAME
           cd $APP_NAME
-          swift package init --type executable
-          cat > ContentView.swift <<'EOF'
-          import SwiftUI
+          echo 'import SwiftUI
           @main
           struct WalletApp: App {
               var body: some Scene {
@@ -20,13 +18,24 @@ workflows:
                       Text("Hello Wallet App!")
                   }
               }
-          }
-          EOF
+          }' > WalletApp.swift
           cd ..
-          xcodebuild -scheme $APP_NAME -destination 'generic/platform=iOS' -configuration Release build
+      - name: Generate Xcode project
+        script: |
+          cd $APP_NAME
+          swift package init --type executable
+          rm Package.swift  # Supprime le fichier de configuration qui posait erreur
+          cd ..
+      - name: Build iOS app
+        script: |
+          xcodebuild -project $APP_NAME.xcodeproj \
+          -scheme $APP_NAME \
+          -destination 'generic/platform=iOS' \
+          -configuration Release build
       - name: Archive app
         script: |
-          xcodebuild -scheme $APP_NAME \
+          xcodebuild -project $APP_NAME.xcodeproj \
+          -scheme $APP_NAME \
           -destination 'generic/platform=iOS' \
           -configuration Release \
           -archivePath build/$APP_NAME.xcarchive archive
