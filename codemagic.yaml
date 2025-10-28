@@ -1,5 +1,5 @@
 workflows:
-  ios_real_build:
+  ios_build:
     name: Build Real iOS App
     environment:
       xcode: latest
