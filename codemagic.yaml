@@ -1,29 +1,48 @@
 workflows:
-  ios-workflow:
-    name: Build iOS App
-    max_build_duration: 60
+  ios_build:
+    name: Build iOS Swift App
     environment:
+      xcode: latest
       vars:
-        APP_NAME: WalletApp
+        APP_NAME: "WalletApp"
     scripts:
-      - name: Build iOS app
+      - name: Create Xcode project
         script: |
-          xcodebuild -scheme $APP_NAME -sdk iphoneos -configuration Release archive -archivePath build/$APP_NAME.xcarchive
-      - name: Create ExportOptions.plist
-        script: |
-          cat <<EOF > ExportOptions.plist
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key><string>development</string>
-            <key>signingStyle</key><string>automatic</string>
-            <key>compileBitcode</key><false/>
-          </dict>
-          </plist>
+          mkdir -p $APP_NAME
+          cd $APP_NAME
+          swift package init --type executable
+          cat > ContentView.swift <<'EOF'
+          import SwiftUI
+          @main
+          struct WalletApp: App {
+              var body: some Scene {
+                  WindowGroup {
+                      Text("Hello Wallet App!")
+                  }
+              }
+          }
           EOF
-      - name: Export .ipa
+          cd ..
+          xcodebuild -scheme $APP_NAME -destination 'generic/platform=iOS' -configuration Release build
+      - name: Archive app
         script: |
-          xcodebuild -exportArchive -archivePath build/$APP_NAME.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath build
+          xcodebuild -scheme $APP_NAME \
+          -destination 'generic/platform=iOS' \
+          -configuration Release \
+          -archivePath build/$APP_NAME.xcarchive archive
+      - name: Export IPA
+        script: |
+          mkdir -p export
+          xcodebuild -exportArchive \
+            -archivePath build/$APP_NAME.xcarchive \
+            -exportPath export \
+            -exportOptionsPlist <(cat <<-EOF
+            {
+              "method": "development",
+              "signingStyle": "automatic",
+              "compileBitcode": false
+            }
+          EOF
+          )
     artifacts:
-      - build/*.ipa
+      - export/*.ipa
