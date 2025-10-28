@@ -1,34 +1,18 @@
 workflows:
   ios_build:
-    name: Build Real iOS App
+    name: iOS Build
     environment:
-      xcode: latest
-      cocoapods: default
+      xcode: 16.4
       vars:
-        APP_NAME: "WalletApp"
+        XCODE_WORKSPACE: "WalletApp.xcodeproj"
+        XCODE_SCHEME: "WalletApp"
     scripts:
-      - name: Create SwiftUI project
+      - name: Clean and prepare project
         script: |
-          mkdir -p $APP_NAME
-          cd $APP_NAME
-          cat > ContentView.swift <<'EOF'
-          import SwiftUI
-          @main
-          struct WalletApp: App {
-              var body: some Scene {
-                  WindowGroup {
-                      Text("Hello Wallet App!")
-                  }
-              }
-          }
-          EOF
-          cd ..
-      - name: Initialize Xcode project
-        script: |
-          cd $APP_NAME
-          swift package init --type executable
-          swift build
-          cd ..
+          echo "Cleaning build folders..."
+          rm -rf ~/Library/Developer/Xcode/DerivedData
+          echo "Removing Package.swift to prevent SwiftPM compile error"
+          find . -name "Package.swift" -delete
       - name: Build for iOS
         script: |
           xcodebuild -scheme WalletApp \
