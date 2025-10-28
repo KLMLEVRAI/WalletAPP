@@ -11,12 +11,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app
+      - name: Generate Xcode project
+        run: swift package generate-xcodeproj
 
       - name: Build and archive
         run: |
-          xcodebuild -scheme WalletApp -sdk iphoneos -configuration Release -archivePath build/WalletApp.xcarchive archive
+          xcodebuild -scheme WalletApp \
+                     -sdk iphoneos \
+                     -configuration Release \
+                     -archivePath build/WalletApp.xcarchive archive
 
       - name: Create ExportOptions.plist
         run: |
@@ -35,9 +38,9 @@ jobs:
       - name: Export .ipa
         run: |
           xcodebuild -exportArchive \
-            -archivePath build/WalletApp.xcarchive \
-            -exportPath build/ \
-            -exportOptionsPlist ExportOptions.plist
+                     -archivePath build/WalletApp.xcarchive \
+                     -exportPath build/ \
+                     -exportOptionsPlist ExportOptions.plist
 
       - name: Upload .ipa artifact
         uses: actions/upload-artifact@v4
