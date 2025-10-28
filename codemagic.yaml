@@ -1,54 +1,54 @@
 workflows:
-  ios_build:
-    name: Build iOS Swift App (auto create project)
+  ios_real_build:
+    name: Build Real iOS App
     environment:
       xcode: latest
+      cocoapods: default
       vars:
         APP_NAME: "WalletApp"
     scripts:
-      - name: Create Swift project folder
+      - name: Create SwiftUI project
         script: |
           mkdir -p $APP_NAME
           cd $APP_NAME
-          echo 'import SwiftUI
+          cat > ContentView.swift <<'EOF'
+          import SwiftUI
           @main
           struct WalletApp: App {
               var body: some Scene {
                   WindowGroup {
-                      Text("Hello Wallet App from Codemagic!")
+                      Text("Hello Wallet App!")
                   }
               }
-          }' > ContentView.swift
-          cd ..
-      - name: Create minimal Xcode project
-        script: |
-          mkdir -p $APP_NAME
-          cd $APP_NAME
-          cat > project.pbxproj <<EOF
-          // !$*UTF8*$!
-          {
-              archiveVersion = 1;
-              objectVersion = 52;
-              rootObject = 1;
-              objects = {};
           }
           EOF
-          mkdir -p WalletApp.xcodeproj
-          mv project.pbxproj WalletApp.xcodeproj/
           cd ..
-      - name: Build iOS app
+      - name: Initialize Xcode project
         script: |
-          xcodebuild -project $APP_NAME/WalletApp.xcodeproj \
-          -scheme WalletApp \
-          -destination 'generic/platform=iOS' \
-          -configuration Release build || echo "⚠️ fake build step - placeholder"
-      - name: Archive app
+          cd $APP_NAME
+          swift package init --type executable
+          swift build
+          cd ..
+      - name: Build for iOS
         script: |
-          mkdir -p build
-          touch build/$APP_NAME.xcarchive
-      - name: Export fake IPA (demo only)
+          xcodebuild -scheme WalletApp \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -configuration Release \
+            -archivePath build/WalletApp.xcarchive archive
+      - name: Export IPA
         script: |
           mkdir -p export
-          zip -r export/$APP_NAME.ipa $APP_NAME
+          xcodebuild -exportArchive \
+            -archivePath build/WalletApp.xcarchive \
+            -exportPath export \
+            -exportOptionsPlist <(cat <<-EOF
+            {
+              "method": "development",
+              "signingStyle": "automatic",
+              "teamID": "YOUR_TEAM_ID_HERE"
+            }
+          EOF
+          )
     artifacts:
       - export/*.ipa
